@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-function Timer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      body.light-mode {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+      body.dark-mode {
+        background-color: #333;
+        color: #f0f0f0;
+      }
+      .container {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .light-mode .container {
+        background-color: white;
+      }
+      .dark-mode .container {
+        background-color: #444;
+      }
+      #display {
+        font-size: 48px;
+        margin-bottom: 20px;
+      }
+      button,
+      select,
+      input {
+        font-size: 18px;
+        margin: 0 10px;
+        padding: 10px 20px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+      button:hover,
+      select:hover {
+        background-color: #0056b3;
+      }
+      input {
+        background-color: white;
+        color: #333;
+      }
+      .mode-switch {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+      input:checked + .slider {
+        background-color: #2196f3;
+      }
+      input:checked + .slider:before {
+        transform: translateX(26px);
+      }
+      #menu,
+      #timerControls,
+      #customInput {
+        margin-bottom: 20px;
+      }
+      #customInput {
+        display: none;
+      }
+      #customInput input {
+        width: 50px;
+        margin-right: 5px;
+      }
+      .error-message {
+        color: red;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body class="light-mode">
+    <div class="mode-switch">
+      <label class="switch">
+        <input type="checkbox" id="modeToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="container">
+      <div id="menu">
+        <select id="timerType">
+          <option value="chronometer">Chronometer</option>
+          <option value="countdown">Countdown Timer</option>
+          <option value="repeat">Interval Timer</option>
+        </select>
+      </div>
+      <div id="customInput">
+        <input type="number" id="hours" min="0" max="23" placeholder="HH" />
+        <input type="number" id="minutes" min="0" max="59" placeholder="MM" />
+        <input type="number" id="seconds" min="0" max="59" placeholder="SS" />
+        <button id="setCustomTime">Set Time</button>
+        <div id="errorMessage" class="error-message"></div>
+      </div>
+      <div id="display">00:00:00</div>
+      <div id="timerControls">
+        <button id="startStop">Start</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+
+    <audio id="timerSound" preload="auto">
+      <source
+        src="https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3"
+        type="audio/mpeg"
+      />
+      Your browser does not support the audio element.
+    </audio>
+
+    <script>
+      let timer;
+      let isRunning = false;
+      let seconds = 0;
+      let timerType = "chronometer";
+      let userSetTime = 0;
+
+      const display = document.getElementById("display");
+      const startStopButton = document.getElementById("startStop");
+      const resetButton = document.getElementById("reset");
+      const modeToggle = document.getElementById("modeToggle");
+      const timerTypeSelect = document.getElementById("timerType");
+      const customInput = document.getElementById("customInput");
+      const setCustomTimeButton = document.getElementById("setCustomTime");
+      const hoursInput = document.getElementById("hours");
+      const minutesInput = document.getElementById("minutes");
+      const secondsInput = document.getElementById("seconds");
+      const timerSound = document.getElementById("timerSound");
+      const errorMessage = document.getElementById("errorMessage");
+
+      function formatTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return [hours, minutes, seconds]
+          .map((v) => (v < 10 ? "0" + v : v))
+          .join(":");
+      }
+
+      function updateDisplay() {
+        display.textContent = formatTime(seconds);
+        if (
+          (timerType === "countdown" || timerType === "repeat") &&
+          seconds === 0
+        ) {
+          playTimerSound();
+          if (timerType === "repeat") {
+            seconds = userSetTime; // Reset to the user-set time for repeating timer
+          } else {
+            clearInterval(timer);
+            isRunning = false;
+            startStopButton.textContent = "Start";
+          }
+        }
+      }
+
+      function playTimerSound() {
+        timerSound.currentTime = 0; // Reset the audio to the beginning
+        timerSound
+          .play()
+          .catch((error) => console.log("Error playing sound:", error));
+      }
+
+      function startStop() {
+        if (isRunning) {
+          clearInterval(timer);
+          startStopButton.textContent = "Start";
+        } else {
+          timer = setInterval(() => {
+            if (timerType === "chronometer") {
+              seconds++;
+            } else {
+              if (seconds > 0) {
+                seconds--;
+              } else if (timerType === "repeat") {
+                seconds = userSetTime; // Reset to the user-set time for repeating timer
+              }
+            }
+            updateDisplay();
+          }, 1000);
+          startStopButton.textContent = "Stop";
+        }
+        isRunning = !isRunning;
+      }
+
+      function reset() {
+        clearInterval(timer);
+        if (timerType === "chronometer") {
+          seconds = 0;
+        } else {
+          seconds = userSetTime;
+        }
+        updateDisplay();
+        startStopButton.textContent = "Start";
+        isRunning = false;
+      }
+
+      function changeTimerType() {
+        timerType = timerTypeSelect.value;
+        clearInterval(timer);
+        isRunning = false;
+        startStopButton.textContent = "Start";
+        errorMessage.textContent = ""; // Clear any previous error messages
+
+        if (timerType === "chronometer") {
+          seconds = 0;
+          customInput.style.display = "none";
+        } else {
+          seconds = userSetTime;
+          customInput.style.display = "block";
+        }
+        updateDisplay();
+      }
+
+      function setCustomTime() {
+        const hours = parseInt(hoursInput.value) || 0;
+        const minutes = parseInt(minutesInput.value) || 0;
+        const secs = parseInt(secondsInput.value) || 0;
+
+        if (hours < 0 || minutes < 0 || secs < 0) {
+          errorMessage.textContent =
+            "Please enter non-negative values for all fields.";
+          return;
+        }
+
+        if (hours === 0 && minutes === 0 && secs === 0) {
+          errorMessage.textContent =
+            "Please enter a time greater than 0 seconds.";
+          return;
+        }
+
+        errorMessage.textContent = ""; // Clear any previous error messages
+        userSetTime = hours * 3600 + minutes * 60 + secs;
+        seconds = userSetTime;
+        updateDisplay();
+      }
+
+      function toggleMode() {
+        document.body.classList.toggle("light-mode");
+        document.body.classList.toggle("dark-mode");
+      }
+
+      startStopButton.addEventListener("click", startStop);
+      resetButton.addEventListener("click", reset);
+      modeToggle.addEventListener("change", toggleMode);
+      timerTypeSelect.addEventListener("change", changeTimerType);
+      setCustomTimeButton.addEventListener("click", setCustomTime);
+
+      updateDisplay();
+    </script>
+  </body>
+</html>
