@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Easy Timer</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="light-mode">
+    <div class="mode-switch">
+      <i class="fa-solid fa-sun"></i>
+      <label class="switch">
+        <input type="checkbox" id="modeToggle" />
+        <span class="slider"></span>
+      </label>
+      <i class="fa-solid fa-moon"></i>
+    </div>
+    <div class="container">
+      <div id="menu">
+        <select id="timerType">
+          <option value="chronometer">Chronometer</option>
+          <option value="countdown">Countdown Timer</option>
+          <option value="repeat">Interval Timer</option>
+        </select>
+      </div>
+      <div id="customInput">
+        <input type="number" id="hours" min="0" max="23" placeholder="HH" />
+        <input type="number" id="minutes" min="0" max="59" placeholder="MM" />
+        <input type="number" id="seconds" min="0" max="59" placeholder="SS" />
+        <button id="setCustomTime">Set Time</button>
+        <div id="errorMessage" class="error-message"></div>
+      </div>
+      <div id="display">00:00:00</div>
+      <div id="timerControls">
+        <button id="startStop">Start</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+
+    <audio id="timerSound" preload="auto">
+      <source
+        src="https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+    <script src="source.js"></script>
+  </body>
+</html>
